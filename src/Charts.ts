@@ -6,3 +6,4 @@ export {
 } from './lib/components/chartComponents/axis/utils/types'
 
 export { SlideBarChart, SlideAreaChart }
+ 
