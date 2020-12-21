@@ -25,8 +25,11 @@ class CursorLine extends Component<CursorLineProps> {
     return (
       <Animated.View
         ref={this.line}
-        style={[styles.line, { width, backgroundColor }]}
-      />
+        style={[styles.line]}
+      >
+        <View style={{ width: 9, height: 2, backgroundColor: '#CFCFCF',left:-4, bottom: 0, position: 'absolute' }}></View>
+        <View style={{ width: 9, height: 2, backgroundColor: '#CFCFCF',left:-4, top: 0, position: 'absolute' }}></View>
+      </Animated.View>
     )
   }
 }
@@ -34,6 +37,9 @@ class CursorLine extends Component<CursorLineProps> {
 const styles = StyleSheet.create({
   line: {
     position: 'absolute',
+    height: 200,
+    width: 1,
+    backgroundColor: '#CFCFCF',
   },
 })
 

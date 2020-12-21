@@ -6,7 +6,7 @@ import * as shape from 'd3-shape'
 import * as path from 'svg-path-properties'
 import { PanGestureHandler } from 'react-native-gesture-handler'
 import ToolTip from './components/toolTip/ToolTip'
-import { scaleTime, scaleLinear, ScaleTime, ScaleLinear } from 'd3-scale'
+import { scaleTime, scaleLinear, ScaleTime, ScaleLinear, scaleQuantile } from 'd3-scale'
 import Cursor from './components/cursor/Cursor'
 import AreaChart from './components/chartComponents/charts/AreaChart'
 import { defaultAreaChartFillGradient } from './components/chartComponents/charts/utils/colors'
@@ -26,6 +26,8 @@ const defaultCursorProps = {
   cursorMarkerWidth: 24,
   cursorWidth: 2,
 }
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput)
 
 class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
 
@@ -56,8 +58,10 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
   label = React.createRef<TextInput>()
   toolTip = React.createRef<ToolTip>()
   chart = React.createRef<AreaChart>()
+  labelDate = React.createRef<AnimatedTextInput>();
   scaleX: ScaleTime<number, number> | ScaleLinear<number, number> = scaleLinear().domain([0, 1]).range([0, 1])
   scaleY: ScaleLinear<number, number> = scaleLinear().domain([0, 1]).range([0, 1])
+  scaleLabelDate: scaleQuantile<number>
   line: string = ''
   startLine: string = ''
   properties: path.SvgPathProperties = path.svgPathProperties('')
@@ -120,6 +124,11 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
       .curve(this.props.curveType)(this.calculateDataToArray()) ||
       ''
   }
+  setNativeCursorLineProps = (nativeProps: Object) => {
+    if (this.cursorLine.current != null) {
+      this.cursorLine.current.setNativeProps(nativeProps)
+    }
+  }
 
   // Determines the start line for the chart
   calculateStartLine = () => {
@@ -150,7 +159,7 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
 
   // Animates the initial rendering of the chart vertically
   animateChart = (value: number) => {
-    const { axisWidth, cursorProps, toolTipProps, paddingLeft } = this.props
+    const { axisWidth, cursorProps, toolTipProps, paddingLeft, paddingRight } = this.props
     const toolTipTextRenderers = toolTipProps?.toolTipTextRenderers || []
     const cursorMarkerHeight = cursorProps?.cursorMarkerHeight ?? defaultCursorProps.cursorMarkerHeight
     const cursorMarkerWidth = cursorProps?.cursorMarkerWidth ?? defaultCursorProps.cursorMarkerWidth
@@ -181,18 +190,23 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
      */
     const interpolator = interpolatePath(this.startLine, this.line, null)
     if (this.cursor.current != null) {
+
       this.cursor.current.setNativeCursorIndicatorProps({
         top: ((1 - value) * startY) - cursorMarkerHeight / 2 + (y * value),
-        left: oldX != null ?
-          ((1 - value) * oldX) - cursorMarkerWidth / 2 + (x * value) :
-          x - cursorMarkerWidth / 2
+        left:
+          this.chartWidth - cursorMarkerWidth / 2
       })
       this.cursor.current.setNativeCursorLineProps({
-        top: ((1 - value) * startY) + (y * value),
-        height: this.scaleY(yRangeCalculated[0]) - (((1 - value) * startY) + (y * value)),
-        left: oldX != null ?
-          ((1 - value) * oldX) - cursorLineWidth / 2 + (x * value) :
-          x - cursorLineWidth / 2
+        top: 0,
+        left: this.chartWidth
+      })
+
+      const labelDate = this.scaleLabelDate(this.scaleX.invert(this.chartWidth + paddingRight + paddingLeft));
+      const date = new Date(labelDate);
+      this.labelDate.current.setNativeProps({
+        text: `${date.toString().split(" ")[2]} ${date.toString().split(" ")[1]}`,
+        top: y - 70,
+        left: this.chartWidth - 50
       })
     }
     const toolTipX = oldX != null ?
@@ -235,17 +249,19 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
     const yRangeCalculated = this.calculateYRange()
 
     if (this.cursor.current != null && this.toolTip.current != null && this.chart.current != null) {
+
       const x = (this.chartWidth / 2) + axisWidth + paddingLeft
       const realPercentage = (x - axisWidth - paddingLeft) / this.chartWidth
+
       this.cursor.current.setNativeCursorIndicatorProps({
         top: this.scaleY(yRangeCalculated[0]) - cursorMarkerHeight / 2,
         left: x - cursorMarkerWidth / 2
       })
       this.cursor.current.setNativeCursorLineProps({
-        top: this.scaleY(yRangeCalculated[0]),
-        height: 0,
+        top: 0,
         left: x - cursorLineWidth / 2
       })
+
       this.toolTip.current.setNativeToolTipPositionProps(
         this.scaleY(yRangeCalculated[0]),
         x,
@@ -279,6 +295,18 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
       }, 10)
     } else {
       this.moveCursorBinaryCore(value)
+    }
+  }
+
+  onEdges(realPercentage: number): number {
+    if (realPercentage > 0.00 && realPercentage < 0.10) {
+      return 0
+    }
+    else if (realPercentage > 0.95) {
+      return -50
+    }
+    else {
+      return -25
     }
   }
 
@@ -316,14 +344,23 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
      * of the line. The scales, margins, and sizes of elements must be supplied to ensure these locations are correct
      */
     if (this.cursor.current != null) {
+      const realPercentage = (x - axisWidth - paddingLeft) / this.chartWidth
+      const labelDate = this.scaleLabelDate(this.scaleX.invert(x));
+      const date = new Date(labelDate);
       this.cursor.current.setNativeCursorIndicatorProps({
         top: y - cursorMarkerHeight / 2,
         left: x - cursorMarkerWidth / 2
       })
       this.cursor.current.setNativeCursorLineProps({
-        top: y,
+        top: 0,
         left: x - cursorLineWidth / 2,
-        height: this.scaleY(yRangeCalculated[0]) - y
+      })
+
+      this.labelDate.current.setNativeProps({
+        text: `${date.toString().split(" ")[2]} ${date.toString().split(" ")[1]}`,
+        top: y - 70,
+        left: x + this.onEdges(realPercentage)
+
       })
     }
     if (this.toolTip.current != null) {
@@ -393,26 +430,22 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
         ]}
       >
         <PanGestureHandler
-          shouldCancelWhenOutside={shouldCancelWhenOutside}
+          shouldCancelWhenOutside={true}
           minPointers={0}
           activeOffsetX={[-3, 3]}
           failOffsetY={scrollable ? [-6, 6] : undefined}
           onGestureEvent={Animated.event([{ nativeEvent: { x } }], { useNativeDriver: true })}
 
-          /**
-           * nativeEvent.state enum
-           * 
-           * UNDETERMINED = 0
-           * FAILED
-           * BEGAN
-           * CANCELLED
-           * ACTIVE
-           * END
-           */
           onHandlerStateChange={evt => {
-            if (evt.nativeEvent.state === 1 || evt.nativeEvent.state === 3 || evt.nativeEvent.state === 5) {
+            if (evt.nativeEvent.state === 1) {
               this.showIndicator(0)
-            } else if (evt.nativeEvent.state === 2) {
+            }
+            else if (evt.nativeEvent.state == 5) {
+              this.showIndicator(0)
+              this.state.x.setValue(this.chartWidth)
+              this.moveCursorBinary(this.chartWidth)
+            }
+            else if (evt.nativeEvent.state === 2) {
               this.showIndicator(1)
             }
           }}
@@ -426,8 +459,12 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
               this.showIndicator(0)
               return true
             }}
-            onStartShouldSetResponder={() => !this.isAnimating}
-            onResponderRelease={() => this.showIndicator(0)}
+            onStartShouldSetResponder={() => true}
+            onResponderRelease={() => {
+              this.showIndicator(0)
+              this.state.x.setValue(this.chartWidth)
+              this.moveCursorBinary(this.chartWidth)
+            }}
             onResponderGrant={evt => {
               const touchLocation = evt.nativeEvent.pageX - axisWidth - paddingLeft
               const xToNumber = this.state.x.__getValue?.()
@@ -456,7 +493,7 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
     this.properties = path.svgPathProperties(this.line)
 
     if (alwaysShowIndicator) {
-      this.moveCursorBinary(this.chartWidth / 2)
+      this.moveCursorBinary(this.chartWidth)
     }
 
     /**
@@ -581,7 +618,7 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
 
     this.chartWidth = width - axisWidth - paddingLeft - paddingRight
 
-    const combinedCursorProps={...defaultCursorProps, ...cursorProps}
+    const combinedCursorProps = { ...defaultCursorProps, ...cursorProps }
     const yRangeCalculated = this.calculateYRange()
     const xRangeCalculated = this.calculateXRange()
     const xCalculatedScale = xScale ? xScale :
@@ -597,6 +634,7 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
       .domain([yRangeCalculated[0], yRangeCalculated[1]])
       .range([height - axisHeight - paddingBottom, paddingTop + chartPaddingTop])
 
+    this.scaleLabelDate = scaleQuantile().domain([xRangeCalculated[0], xRangeCalculated[1]]).range(data.map(d => d.x))
     const startLine = animated ?
       this.calculateStartLine() :
       this.calculateLine()
@@ -638,14 +676,20 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
           xAxisProps={xAxisProps}
           yAxisProps={yAxisProps}
         />
-        {!onPress && <Cursor
-          ref={this.cursor}
-          {...combinedCursorProps}
-        />}
-        {!onPress && <ToolTip
+
+        {!onPress &&
+          <>
+            <Cursor
+              ref={this.cursor}
+              {...combinedCursorProps}
+            />
+          </>
+        }
+        <AnimatedTextInput style={[styles.label]} ref={this.labelDate} editable={false} />
+        {/* {!onPress && <ToolTip
           ref={this.toolTip}
           {...toolTipProps}
-        />}
+        />} */}
         {this.renderTouchable()}
       </View>
     )
@@ -656,6 +700,17 @@ const styles = StyleSheet.create({
   container: {
     marginHorizontal: 0,
     backgroundColor: '#fff',
+  },
+  label: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    marginTop: Platform.OS == "ios" ? 20 : 10,
+    backgroundColor: '#fff',
+    color: '#000',
+    width: Platform.OS == "ios" ? 50 : 60,
+    textAlign: 'center',
+    padding:0
   },
 })
 

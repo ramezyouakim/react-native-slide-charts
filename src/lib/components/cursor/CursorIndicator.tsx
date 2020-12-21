@@ -26,8 +26,9 @@ class CursorIndicator extends Component<CursorIndicatorProps> {
       width: cursorRadius * 2,
       height: cursorRadius * 2,
       borderRadius: cursorRadius,
+      borderWidth:3,
       borderColor,
-      backgroundColor,
+      backgroundColor:'white',
     }
     return (
       <Animated.View

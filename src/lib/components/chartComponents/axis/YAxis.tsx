@@ -12,8 +12,8 @@ class YAxis extends Component<YAxisComponentProps> {
 
   static defaultProps: YAxisDefaultProps = {
     renderVerticalLineGradient: verticalLineGradient,
-    verticalLineWidth: 1,
-    horizontalLineWidth: 1,
+    verticalLineWidth: 0,
+    horizontalLineWidth: 0,
     axisLabelStyle: { fontSize: 13, color: axisLabelColor },
     axisMarkerStyle: { fontSize: 13, color: axisMarkerColor },
     axisAverageMarkerStyle: { fontSize: 13, color: averageMarkerColor },
