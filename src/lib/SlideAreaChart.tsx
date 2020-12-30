@@ -204,9 +204,9 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
       const labelDate = this.scaleLabelDate(this.scaleX.invert(this.chartWidth + paddingRight + paddingLeft));
       const date = new Date(labelDate);
       this.labelDate.current.setNativeProps({
-        text: `${date.toString().split(" ")[2]} ${date.toString().split(" ")[1]}`,
+        text: `${date.toString().split(" ")[2]} ${date.toString().split(" ")[1]} ${date.toString().split(" ")[3]}`,
         top: y - 70,
-        left: this.chartWidth - 50
+        left: this.chartWidth - 100
       })
     }
     const toolTipX = oldX != null ?
@@ -303,10 +303,10 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
       return 0
     }
     else if (realPercentage > 0.95) {
-      return -50
+      return -100
     }
     else {
-      return -25
+      return -50
     }
   }
 
@@ -357,7 +357,7 @@ class SlideAreaChart extends Component<SlideAreaChartComponentProps, State> {
       })
 
       this.labelDate.current.setNativeProps({
-        text: `${date.toString().split(" ")[2]} ${date.toString().split(" ")[1]}`,
+        text: `${date.toString().split(" ")[2]} ${date.toString().split(" ")[1]} ${date.toString().split(" ")[3]}`,
         top: y - 70,
         left: x + this.onEdges(realPercentage)
 
@@ -708,7 +708,7 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS == "ios" ? 20 : 10,
     backgroundColor: '#fff',
     color: '#000',
-    width: Platform.OS == "ios" ? 50 : 60,
+    width: Platform.OS == "ios" ? 100 : 110,
     textAlign: 'center',
     padding:0
   },
